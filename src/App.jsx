@@ -1,24 +1,21 @@
 import { useState, useEffect, useRef } from "react";
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, push, get } from "firebase/database";
+const firebaseConfig = {
+    apiKey: "AIzaSyBmcrIARMXksDd0SD-GJMVY0HidSjS0WZ8",
+    authDomain: "racmun-voting.firebaseapp.com",
+    databaseURL: "https://racmun-voting-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "racmun-voting",
+    storageBucket: "racmun-voting.firebasestorage.app",
+    messagingSenderId: "263791447211",
+    appId: "1:263791447211:web:1e1b5aa814d96521a23bee"
+  };
 
-// ─── FIREBASE STUB ───────────────────────────────────────────────────────────
-// Replace this section with real Firebase imports when deploying:
-// import { initializeApp } from "firebase/app";
-// import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
-// const firebaseConfig = { ... your config ... };
-// const app = initializeApp(firebaseConfig);
-// const db = getFirestore(app);
-
-// MOCK Firebase for demo — swaps out cleanly
-const mockDB = { responses: [] };
-const db = {
-  _submit: async (data) => {
-    mockDB.responses.push({ ...data, id: Date.now(), ts: new Date().toISOString() });
-    return { id: Date.now() };
-  },
-  _getAll: async () => mockDB.responses,
-};
+  const app = initializeApp(firebaseConfig);
+  const db  = getDatabase(app);
 
 // ─── STYLES ──────────────────────────────────────────────────────────────────
+console.log("🔥 NEW VERSION LIVE");
 const globalStyles = `
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Syne:wght@400;700;800&family=Space+Mono&display=swap');
 
@@ -786,7 +783,10 @@ function AdminPanel() {
 
   const loadData = async () => {
     setLoading(true);
-    const data = await db._getAll();
+    const snapshot = await get(ref(db, "responses"));
+    const data = snapshot.exists()
+      ? Object.entries(snapshot.val()).map(([id, val]) => ({ id, ...val }))
+      : [];
     setResponses(data);
     setLoading(false);
   };
@@ -973,10 +973,25 @@ export default function App() {
 
   const isPink = gender === "girl";
   const submitForm = async () => {
-  setScreen("submitting");
-  await db._submit({ gender, ...answers, ts: new Date().toISOString() });
-  setTimeout(() => setScreen("thankyou"), 2800);
-};
+    console.log("🚀 SUBMIT START");
+
+    try {
+      const result = await push(ref(db, "responses"), {
+        gender,
+        ...answers,
+        ts: new Date().toISOString()
+      });
+
+      console.log("✅ SAVED:", result);
+
+      setScreen("submitting");
+      setTimeout(() => setScreen("thankyou"), 2800);
+
+    } catch (err) {
+      console.error("❌ FIREBASE FAILED:", err);
+      alert("Error saving data. Check console.");
+    }
+  };
   // Girl questions
   const girlSteps = [
     <QuestionScreen key="g0" gender="girl" step={1} totalSteps={12} onNext={() => setStep(1)}>
